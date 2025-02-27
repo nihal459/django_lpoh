@@ -1,0 +1,116 @@
+views:
+
+from django.shortcuts import render, redirect
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login, logout
+from django.contrib import messages
+
+# ✅ User Registration View
+def register(request):
+    if request.method == "POST":
+        username = request.POST['username']
+        email = request.POST['email']
+        password1 = request.POST['password1']
+        password2 = request.POST['password2']
+
+        if password1 == password2:
+            if User.objects.filter(username=username).exists():
+                messages.error(request, "Username already taken.")
+            elif User.objects.filter(email=email).exists():
+                messages.error(request, "Email already registered.")
+            else:
+                user = User.objects.create_user(username=username, email=email, password=password1)
+                user.save()
+                messages.success(request, "Account created successfully! You can now log in.")
+                return redirect('login')
+        else:
+            messages.error(request, "Passwords do not match.")
+    
+    return render(request, 'register.html')
+
+# ✅ User Login View
+def user_login(request):
+    if request.method == "POST":
+        username = request.POST['username']
+        password = request.POST['password']
+        
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            messages.success(request, "Login successful!")
+            return redirect('dashboard')  # Redirect to a dashboard or homepage
+        else:
+            messages.error(request, "Invalid username or password.")
+
+    return render(request, 'login.html')
+
+# ✅ User Logout View
+def user_logout(request):
+    logout(request)
+    messages.success(request, "Logged out successfully!")
+    return redirect('login')
+
+# ✅ Dashboard View (Only for logged-in users)
+def dashboard(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    return render(request, 'dashboard.html', {'user': request.user})
+
+
+register.html:
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Register</title>
+</head>
+<body>
+    <h2>Register</h2>
+    {% for message in messages %}
+        <p style="color:red;">{{ message }}</p>
+    {% endfor %}
+    
+    <form method="POST">
+        {% csrf_token %}
+        <label>Username:</label>
+        <input type="text" name="username" required><br>
+        <label>Email:</label>
+        <input type="email" name="email" required><br>
+        <label>Password:</label>
+        <input type="password" name="password1" required><br>
+        <label>Confirm Password:</label>
+        <input type="password" name="password2" required><br>
+        <button type="submit">Register</button>
+    </form>
+    
+    <p>Already have an account? <a href="{% url 'login' %}">Login</a></p>
+</body>
+</html>
+
+
+
+login.html:
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Login</title>
+</head>
+<body>
+    <h2>Login</h2>
+    {% for message in messages %}
+        <p style="color:red;">{{ message }}</p>
+    {% endfor %}
+    
+    <form method="POST">
+        {% csrf_token %}
+        <label>Username:</label>
+        <input type="text" name="username" required><br>
+        <label>Password:</label>
+        <input type="password" name="password" required><br>
+        <button type="submit">Login</button>
+    </form>
+    
+    <p>Don't have an account? <a href="{% url 'register' %}">Register</a></p>
+</body>
+</html>
